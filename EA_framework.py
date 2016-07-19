@@ -5,7 +5,13 @@ Created on Jul 16, 2016
 '''
 
 import random
-import time
+import platform
+# time.time() on windows returns with second precision so we need time.clock()
+# time.clock() on Unix returns processor time of current process so can't be used with multiprocessing
+if platform.system() == 'Windows':
+    from time import clock as time
+else:
+    from time import time
 import matplotlib.pyplot as plt
 import multiprocessing
 
@@ -20,11 +26,11 @@ def evaluateIndividual(individual):
     :returns: responseTime: fitness of calculate() measured in response time.
     """
     from EA_app import calculate
-    start = time.time()
+    start = time()
     
     calculate(*individual) # Function to evaluate, expand individual to parameters
     
-    responseTime = time.time() - start
+    responseTime = time() - start
     
     # If we use multiprocessing we can't edit the individual because of pickle'ing
     # The response time will be added in the main process
@@ -127,26 +133,15 @@ def run(toolbox, pop, ngen, cxpb, mutpb):
         plt.pause(0.05)
         
         # Print the top 3 for this population
-        print "Generation %d" % g
+        print("Generation %d" % g)
         for index, item in enumerate(topThree):
-            print "#%d: %E %s" % (index, item.responseTime, str(item))
-        print '\n'
+            print( "#%d: %E %s" % (index, item.responseTime, str(item)))
+        print ('\n')
     
     return pop # Return the resulting population
 
-
-
-if __name__ == "__main__":
-    """
-    Run an evolutionary algorithm to determine the conditions for the longest response time on an application
-    This Example is based on a calculator that can add '+' substract '-' multiply 'x' and divide '/'.
-    Example: calculate(6, '+', 2) returns 8
-    """
-    # Prepare the plot
-    plt.ion()
-    plt.ylabel('Response Time')
-    plt.xlabel('Generation')
-    
+def setupToolbox():
+    """ Fill the toolbox needed for applying our algorithm """
     # Mutate_list holds the possible values to mutate to
     # Values need to be generated beforehand because we reference the index of a value during mutation
     low, high = 1, 99
@@ -169,9 +164,24 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool() # Create a multiprocessing pool to execute a population in parallel
     toolbox.register("map", pool.map) # register the multiprocessing pool
     
+    return toolbox
+
+if __name__ == "__main__":
+    """
+    Run an evolutionary algorithm to determine the conditions for the longest response time on an application
+    This Example is based on a calculator that can add '+' substract '-' multiply 'x' and divide '/'.
+    Example: calculate(6, '+', 2) returns 8
+    """
+    # Prepare the plot
+    plt.ion()
+    plt.ylabel('Response Time')
+    plt.xlabel('Generation')
+    
+    # Create the evolutionary algorithm toolbox
+    toolbox = setupToolbox()    
     
     # Create the first population and run the algorithm
-    pop = toolbox.population(n=100) # Initial population
+    pop = toolbox.population(n=100)
     pop = run(toolbox, pop, ngen=200, cxpb=0.5, mutpb=0.8)
     
     # Print the top 10 of the resulting population     
