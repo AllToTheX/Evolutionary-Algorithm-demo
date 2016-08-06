@@ -6,17 +6,18 @@ Created on Jul 16, 2016
 
 import random
 import platform
-# time.time() on windows returns with second precision so we need time.clock()
-# time.clock() on Unix returns processor time of current process so can't be used with multiprocessing
-if platform.system() == 'Windows':
-    from time import clock as time
-else:
-    from time import time
 import matplotlib.pyplot as plt
 import multiprocessing
+import timeit
 
 from deap import base, creator, tools
 
+
+def wrapper(func, *args, **kwargs):
+    """ Wrapper for the timeit call """
+    def wrapped():
+        return func(*args, **kwargs)
+    return wrapped
 
 def evaluateIndividual(individual):
     """ Evaluate the the fitness of our individual by measuring the response time of
@@ -26,15 +27,14 @@ def evaluateIndividual(individual):
     :returns: responseTime: fitness of calculate() measured in response time.
     """
     from EA_app import calculate
-    start = time()
     
-    calculate(*individual) # Function to evaluate, expand individual to parameters
+    wrapped = wrapper( calculate, *individual )
+    responseTime = timeit.timeit(wrapped, number=1)
     
-    responseTime = time() - start
     
     # If we use multiprocessing we can't edit the individual because of pickle'ing
     # The response time will be added in the main process
-#     individual.responseTime = (stop-start)
+#     individual.responseTime = (responseTime)
     return (responseTime,) # Return needs to be a tuple as there can be more than 1 fitness defined.
 
 def createIndividual(individual,low,high):
