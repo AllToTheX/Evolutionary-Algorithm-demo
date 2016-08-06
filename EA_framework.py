@@ -12,6 +12,7 @@ import timeit
 
 from deap import base, creator, tools
 
+OPERATORS = ['+','-','x','/']
 
 def wrapper(func, *args, **kwargs):
     """ Wrapper for the timeit call """
@@ -28,27 +29,27 @@ def evaluateIndividual(individual):
     """
     from EA_app import calculate
     
-    wrapped = wrapper( calculate, *individual )
+    wrapped = wrapper(calculate, *individual)
     responseTime = timeit.timeit(wrapped, number=1)
-    
     
     # If we use multiprocessing we can't edit the individual because of pickle'ing
     # The response time will be added in the main process
 #     individual.responseTime = (responseTime)
     return (responseTime,) # Return needs to be a tuple as there can be more than 1 fitness defined.
 
-def createIndividual(individual,low,high):
+def createIndividual(individual, var1, opper, var2):
     """ Created an individual instance to run the application with. 
     
     :param individual: individual (inheriting of type list) to be mutated.
-    :param low: lower limit for generating a random integer.
-    :param high: higher limit for generating a random integer.
+    :param var1: list containing possible values for variable 1.
+    :param opper: list containing possible operators.
+    :param var2: list containing possible values for variable 2.
     :returns: A populated individual
     """
     ind = individual() # Create the instance
-    ind.append(random.randint(low,high)) # Generate a random number for var1
-    ind.append(random.choice(['+','-','x','/'])) # pick a random operator
-    ind.append(random.randint(low,high)) # Generate a random number for var2
+    ind.append(random.choice(var1)) # Generate a random number for var1
+    ind.append(random.choice(opper)) # pick a random operator
+    ind.append(random.choice(var2)) # Generate a random number for var2
     return ind
 
 def mutChoiceFromList(individual, lists, indpb, mutrng=(-1,1)):
@@ -91,7 +92,7 @@ def run(toolbox, pop, ngen, cxpb, mutpb):
         :param mutpb: Mutate probability.
         :returns: The resulting population
     """
-    topOne = list() # Keep score of the top 1 four our plot
+    topOne = list() # Keep score of the top 1 for our plot
     
     # Evaluate the fitness of the initial population
     fitnesses = toolbox.map(toolbox.evaluate, pop)
@@ -146,7 +147,7 @@ def setupToolbox():
     # Values need to be generated beforehand because we reference the index of a value during mutation
     low, high = 1, 99
     mutate_list = ( range(low,high+1),
-                ['+','-','x','/'],
+                OPERATORS,
                 range(low,high+1) )
     
     # Create the base class for the individuals
@@ -155,7 +156,7 @@ def setupToolbox():
     
     # Register the toolkit to work with
     toolbox = base.Toolbox()
-    toolbox.register("individual", createIndividual, creator.Individual, low, high) # Specify the method to create an individual
+    toolbox.register("individual", createIndividual, creator.Individual, *mutate_list) # Specify the method to create an individual
     toolbox.register("population", tools.initRepeat, list, toolbox.individual) # Specify the method to create the population
     toolbox.register("evaluate", evaluateIndividual) # Specify the method to evaluate the individual
     toolbox.register("mate", tools.cxTwoPoint) # Specify the method to mate the population
