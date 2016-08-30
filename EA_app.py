@@ -13,8 +13,8 @@ def calculate(var1, oper, var2):
     Every calculation is delayed based on the inverse of var1.
     Every multiplication is delayed based on var2
     '''
-    time1 = float(999-var1)/100000
-    time2 = float(var2*2)/100000
+    time1 = float(999-var1)/19000
+    time2 = float(var2*2)/19000
 
     time.sleep(time1)
     if oper == '+':
@@ -27,7 +27,7 @@ def calculate(var1, oper, var2):
     elif oper == '/':
         return decimal.Decimal(var1) / decimal.Decimal(var2)
     else:
-        return var1 + var2
+        raise NotImplementedError
 
 if __name__ == '__main__':
     raise NotImplementedError
