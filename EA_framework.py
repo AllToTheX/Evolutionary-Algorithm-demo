@@ -196,11 +196,11 @@ def setupToolbox():
     
     # Create the base class for the individuals
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMax, responseTime=0.0)
+    creator.create("Individual", list, fitness=creator.FitnessMax, responseTime=0.0)  # @UndefinedVariable
     
     # Register the toolkit to work with
     toolbox = base.Toolbox()
-    toolbox.register("individual", createIndividual, creator.Individual, *mutate_list) # Specify the method to create an individual
+    toolbox.register("individual", createIndividual, creator.Individual, *mutate_list) # Specify the method to create an individual @UndefinedVariable
     toolbox.register("population", tools.initRepeat, list, toolbox.individual) # Specify the method to create the population
     toolbox.register("evaluate", evaluateIndividual, n=1) # Specify the method to evaluate the individual
     toolbox.register("mate", tools.cxTwoPoint) # Specify the method to mate the population
