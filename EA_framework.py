@@ -42,7 +42,7 @@ def evaluateIndividual(individual,n=1):
 def createIndividual(individual, var1, opper, var2):
     """ Created an individual instance to run the application with. 
     
-    :param individual: individual (inheriting of type list) to be mutated.
+    :param individual: individual class reference (inheriting of type list) to be populated.
     :param var1: list containing possible values for variable 1.
     :param opper: list containing possible operators.
     :param var2: list containing possible values for variable 2.
