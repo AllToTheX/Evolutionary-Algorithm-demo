@@ -8,6 +8,8 @@ import random
 import matplotlib.pyplot as plt
 import multiprocessing
 import timeit
+import plotly as py
+import plotly.graph_objs as go
 
 from deap import base, creator, tools
 
@@ -42,7 +44,7 @@ def evaluateIndividual(individual,n=1):
 def createIndividual(individual, var1, opper, var2):
     """ Created an individual instance to run the application with. 
     
-    :param individual: individual (inheriting of type list) to be mutated.
+    :param individual: individual class reference (inheriting of type list) to be populated.
     :param var1: list containing possible values for variable 1.
     :param opper: list containing possible operators.
     :param var2: list containing possible values for variable 2.
@@ -102,6 +104,47 @@ def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title=''):
     plt.setp(labels, rotation=45)
     # Show the plot
     plt.pause(0.05)
+    
+def create_plot(topOne):
+    """
+    Create an HTML5 plot of the individuals response times
+    """
+    # Get the response times and string representation of the individuals 
+    x_values = [' '.join([str(item) for item in ind]) for ind in topOne] # string representation
+    y_values = [item.responseTime*1000 for item in topOne] # Response times
+    # Create a trace
+    trace = go.Scatter(
+        x = x_values,
+        y = y_values,
+        mode = 'markers',
+        name = 'Sorted'
+    )
+    # Create the plot layout
+    layout = go.Layout(
+        title='Best of each generation',
+        xaxis=dict(
+            title='Individual',
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color='#7f7f7f'
+            )
+        ),
+        yaxis=dict(
+            title='Response time [ms]',
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color='#7f7f7f'
+            )
+        )
+    )
+    # Create the figure
+    data = [trace,]
+    fig = go.Figure(data=data, layout=layout)
+    
+    # Create the plot in HTML5 and open it in a browser
+    py.offline.plot(fig, filename='plot.html', auto_open=True)
 
 def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
     """
@@ -196,11 +239,11 @@ def setupToolbox():
     
     # Create the base class for the individuals
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMax, responseTime=0.0)
+    creator.create("Individual", list, fitness=creator.FitnessMax, responseTime=0.0)  # @UndefinedVariable
     
     # Register the toolkit to work with
     toolbox = base.Toolbox()
-    toolbox.register("individual", createIndividual, creator.Individual, *mutate_list) # Specify the method to create an individual
+    toolbox.register("individual", createIndividual, creator.Individual, *mutate_list) # Specify the method to create an individual @UndefinedVariable
     toolbox.register("population", tools.initRepeat, list, toolbox.individual) # Specify the method to create the population
     toolbox.register("evaluate", evaluateIndividual, n=1) # Specify the method to evaluate the individual
     toolbox.register("mate", tools.cxTwoPoint) # Specify the method to mate the population
@@ -230,7 +273,7 @@ if __name__ == "__main__":
     # Create the initial population and start the Evolutionary Algorithm
     #===========================================================================
     npop = 50
-    ngen = 20
+    ngen = 50
     cxpb = 0.5
     mutpb = 0.3
     pop = toolbox.population(n=npop)
@@ -245,6 +288,8 @@ if __name__ == "__main__":
     
     # Sort the best performing individuals by response time, and show in a new figure
     topOne = tools.selWorst(topOne, k=len(topOne))
-    update_plot(topOne, figure=2, subplot=(1,1,1), line_style='o', title="Sorted.\nGenerations: %s, cross-over: %s, mutation: %s" %(ngen, cxpb, mutpb))
-    plt.show(block=True)   
+    create_plot(topOne)
+    
+#     update_plot(topOne, figure=2, subplot=(1,1,1), line_style='o', title="Sorted.\nGenerations: %s, cross-over: %s, mutation: %s" %(ngen, cxpb, mutpb))
+#     plt.show(block=True)   
         
