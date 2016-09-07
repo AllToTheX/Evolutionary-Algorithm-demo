@@ -172,6 +172,13 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         :param plot: if True, plot the best performing individuals in each generation.
         :returns: (pop, topOne) The resulting population and the best individuals of each generation
     """
+    #===========================================================================
+    # determine the amount of individuals to continue with after each generation
+    #===========================================================================
+    selfact = 0.2
+    select_k = int( len(pop)*selfact ) # Amount of individuals to keep
+    
+    # Keep track of diagnostics
     topOne = list() # Keep score of the top 1 for our plot
     all_populations = dict()
 
@@ -188,20 +195,24 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
     #===========================================================================
     for g in range(1,ngen):
         #=======================================================================
-        # Select the best performing individuals in current population
+        # Select the parents for the crossover
         #=======================================================================
-        pop = toolbox.select(pop, k=len(pop))
+        parents = toolbox.select(pop, k=select_k)
+        parents = [toolbox.clone(ind) for ind in parents] # Make the parents a hard copy
         #=======================================================================
-        # Clone the population
+        # Crossover the population
         #=======================================================================
-        pop = [toolbox.clone(ind) for ind in pop]
-        #=======================================================================
-        # Mate the population
-        #=======================================================================
-        for child1, child2 in zip(pop[::2], pop[1::2]): # mate each individual with it's neighbor
+        for child1, child2 in zip(parents[::2], parents[1::2]): # mate each parent with it's neighbor
             if random.random() < cxpb: # Probability to mate
                 toolbox.mate(child1, child2)
                 del child1.fitness.values, child2.fitness.values
+        #=======================================================================
+        # Insert children into the population
+        #=======================================================================
+        children = [ind for ind in parents if not ind.fitness.valid]
+        pop = toolbox.select(pop, k=len(pop)) # Sort population based on fitness
+        if len(children) > 0: pop[-len(children):] = children 
+        pop = [toolbox.clone(ind) for ind in pop]
         #=======================================================================
         # Mutate the population
         #=======================================================================
@@ -280,7 +291,7 @@ if __name__ == "__main__":
     # Create the initial population and start the Evolutionary Algorithm
     #===========================================================================
     npop = 50
-    ngen = 50
+    ngen = 100
     cxpb = 0.5
     mutpb = 0.3
     pop = toolbox.population(n=npop)
