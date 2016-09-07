@@ -105,21 +105,11 @@ def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title=''):
     # Show the plot
     plt.pause(0.05)
     
-def create_plot(topOne):
+def create_plot(populations,plot_name='plot.html'):
     """
     Create an HTML5 plot of the individuals response times
     """
-    # Get the response times and string representation of the individuals 
-    x_values = [' '.join([str(item) for item in ind]) for ind in topOne] # string representation
-    y_values = [item.responseTime*1000 for item in topOne] # Response times
-    # Create a trace
-    trace = go.Scatter(
-        x = x_values,
-        y = y_values,
-        mode = 'markers',
-        name = 'Sorted'
-    )
-    # Create the plot layout
+    data = list()
     layout = go.Layout(
         title='Best of each generation',
         xaxis=dict(
@@ -139,12 +129,28 @@ def create_plot(topOne):
             )
         )
     )
-    # Create the figure
-    data = [trace,]
+    for name, population in populations.iteritems():
+        # Get the response times and string representation of the individuals 
+        x_values = [' '.join([str(item) for item in ind]) for ind in population] # string representation
+        y_values = [item.responseTime*1000 for item in population] # Response times
+        # Create a trace
+        trace = go.Scatter(
+            x = x_values,
+            y = y_values,
+            mode = 'markers',
+            name = name,
+            visible = 'legendonly'
+        )
+        # Create the plot layout
+        
+        # Create the figure
+        data.append(trace)
+        
+    data[0].visible = True
     fig = go.Figure(data=data, layout=layout)
     
     # Create the plot in HTML5 and open it in a browser
-    py.offline.plot(fig, filename='plot.html', auto_open=True)
+    py.offline.plot(fig, filename=plot_name, auto_open=True)
 
 def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
     """
@@ -166,8 +172,16 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         :param plot: if True, plot the best performing individuals in each generation.
         :returns: (pop, topOne) The resulting population and the best individuals of each generation
     """
-    topOne = list() # Keep score of the top 1 for our plot
+    #===========================================================================
+    # determine the amount of individuals to continue with after each generation
+    #===========================================================================
+    selfact = 0.2
+    select_k = int( len(pop)*selfact ) # Amount of individuals to keep
     
+    # Keep track of diagnostics
+    topOne = list() # Keep score of the top 1 for our plot
+    all_populations = dict()
+
     #===========================================================================
     # Evaluate the fitness of the initial population
     #===========================================================================
@@ -179,22 +193,26 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
     #===========================================================================
     # Start the generation loop
     #===========================================================================
-    for g in range(ngen):
+    for g in range(1,ngen):
         #=======================================================================
-        # Select the best performing individuals in current population
+        # Select the parents for the crossover
         #=======================================================================
-        pop = toolbox.select(pop, k=len(pop))
+        parents = toolbox.select(pop, k=select_k)
+        parents = [toolbox.clone(ind) for ind in parents] # Make the parents a hard copy
         #=======================================================================
-        # Clone the population
+        # Crossover the population
         #=======================================================================
-        pop = [toolbox.clone(ind) for ind in pop]
-        #=======================================================================
-        # Mate the population
-        #=======================================================================
-        for child1, child2 in zip(pop[::2], pop[1::2]): # mate each individual with it's neighbor
+        for child1, child2 in zip(parents[::2], parents[1::2]): # mate each parent with it's neighbor
             if random.random() < cxpb: # Probability to mate
                 toolbox.mate(child1, child2)
                 del child1.fitness.values, child2.fitness.values
+        #=======================================================================
+        # Insert children into the population
+        #=======================================================================
+        children = [ind for ind in parents if not ind.fitness.valid]
+        pop = toolbox.select(pop, k=len(pop)) # Sort population based on fitness
+        if len(children) > 0: pop[-len(children):] = children 
+        pop = [toolbox.clone(ind) for ind in pop]
         #=======================================================================
         # Mutate the population
         #=======================================================================
@@ -212,14 +230,14 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
             ind.responseTime = fit[0] # Add response time to individual for plotting        
         #=======================================================================
 
-
+        all_populations["Generation %s" %(g)] = pop
         # Select the top 3 of current population for printing
         topThree = tools.selBest(pop, k=3)
         # Add the winner of this population to the plot
         topOne.append(topThree[0])
         
         # Expand the plot with the new winner
-        if plot: update_plot(topOne, line_style='o',title="Sequential.\nGeneration: %s" %(g+1))
+        if plot: update_plot(topOne, line_style='o',title="Sequential.\nGeneration: %s" %(g))
         
         # Print the top 3 for this population
         print("Generation %d" % g)
@@ -227,7 +245,7 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
             print( "#%d: %E %s" % (index, item.responseTime, str(item)))
         print ('\n')
     
-    return pop, topOne # Return the resulting population
+    return all_populations, topOne # Return the resulting population
 
 def setupToolbox():
     """ Fill the toolbox needed for applying our algorithm """
@@ -273,7 +291,7 @@ if __name__ == "__main__":
     # Create the initial population and start the Evolutionary Algorithm
     #===========================================================================
     npop = 50
-    ngen = 50
+    ngen = 100
     cxpb = 0.5
     mutpb = 0.3
     pop = toolbox.population(n=npop)
@@ -287,8 +305,10 @@ if __name__ == "__main__":
         print("#%d: %E %s" %(index,item.responseTime, str(item)))
     
     # Sort the best performing individuals by response time, and show in a new figure
-    topOne = tools.selWorst(topOne, k=len(topOne))
-    create_plot(topOne)
+    top = dict()
+    top['Sorted'] = tools.selWorst(topOne, k=len(topOne))
+    create_plot(top,plot_name='plot.html')
+    create_plot(pop,plot_name='populations.html')
     
 #     update_plot(topOne, figure=2, subplot=(1,1,1), line_style='o', title="Sorted.\nGenerations: %s, cross-over: %s, mutation: %s" %(ngen, cxpb, mutpb))
 #     plt.show(block=True)   
