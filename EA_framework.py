@@ -4,12 +4,16 @@ Created on Jul 16, 2016
 @author: allexveldman
 '''
 
+import sys
 import random
 import matplotlib.pyplot as plt
 import multiprocessing
 import timeit
 import plotly as py
 import plotly.graph_objs as go
+
+# import AppKit
+# print [(screen.frame().size.width, screen.frame().size.height) for screen in AppKit.NSScreen.screens()]
 
 from deap import base, creator, tools
 
@@ -75,7 +79,7 @@ def mutChoiceFromList(individual, posval, indpb):
     
     return individual,
 
-def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title=''):
+def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title='', block=False):
     """
     Update the `subplot in `figure.
     :param values: values to plot.
@@ -88,7 +92,7 @@ def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title=''):
     y = [item.responseTime for item in values] # Y values
     
     # select figure and subplot
-    plt.figure(figure)
+    plt.figure(figure,figsize=(20, 10))
     plt.subplot(*subplot)
     # clear axis
     plt.cla() 
@@ -103,7 +107,8 @@ def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title=''):
     _, labels = plt.xticks()
     plt.setp(labels, rotation=45)
     # Show the plot
-    plt.pause(0.05)
+    
+    plt.show(block=True) if block else plt.pause(0.05)
     
 def create_plot(populations,plot_name='plot.html'):
     """
@@ -139,9 +144,12 @@ def create_plot(populations,plot_name='plot.html'):
             y = y_values,
             mode = 'markers',
             name = name,
+            marker = {
+                      'size'    : 10,
+                      'line'    : {'width'  : 2},
+                      },
             visible = 'legendonly'
         )
-        # Create the plot layout
         
         # Create the figure
         data.append(trace)
@@ -173,7 +181,7 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         :returns: (pop, topOne) The resulting population and the best individuals of each generation
     """
     #===========================================================================
-    # determine the amount of individuals to continue with after each generation
+    # determine the amount of individuals to use for Recombination
     #===========================================================================
     selfact = 0.2
     select_k = int( len(pop)*selfact ) # Amount of individuals to keep
@@ -189,7 +197,8 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
     for ind, fit in zip(pop, fitnesses):
         ind.fitness.values = fit
         ind.responseTime = fit[0]
-    
+    all_populations["Generation 0"] = pop
+    if plot: update_plot(pop, line_style='o',title="Initial population",block=True)
     #===========================================================================
     # Start the generation loop
     #===========================================================================
@@ -199,6 +208,7 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         #=======================================================================
         parents = toolbox.select(pop, k=select_k)
         parents = [toolbox.clone(ind) for ind in parents] # Make the parents a hard copy
+        if plot: update_plot(parents, line_style='o',title="Parents after selection",block=True)
         #=======================================================================
         # Crossover the population
         #=======================================================================
@@ -206,13 +216,17 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
             if random.random() < cxpb: # Probability to mate
                 toolbox.mate(child1, child2)
                 del child1.fitness.values, child2.fitness.values
+                child1.responseTime = 0
+                child2.responseTime = 0
+        children = [ind for ind in parents if not ind.fitness.valid]       
+        if plot: update_plot(children, line_style='o',title="Children after Recombination",block=True)
         #=======================================================================
         # Insert children into the population
         #=======================================================================
-        children = [ind for ind in parents if not ind.fitness.valid]
         pop = toolbox.select(pop, k=len(pop)) # Sort population based on fitness
         if len(children) > 0: pop[-len(children):] = children 
         pop = [toolbox.clone(ind) for ind in pop]
+        if plot: update_plot(pop, line_style='o',title="Population after Reinsertion",block=True)
         #=======================================================================
         # Mutate the population
         #=======================================================================
@@ -220,6 +234,8 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
             if random.random() < mutpb:
                 toolbox.mutate(mutant)
                 del mutant.fitness.values
+                mutant.responseTime = 0
+        if plot: update_plot(pop, line_style='o',title="Population after Mutation",block=True)
         #=======================================================================
         # Evaluate fitness of the new individuals in the resulting population
         #=======================================================================
@@ -227,17 +243,19 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         fitnesses = toolbox.map(toolbox.evaluate, invalids)
         for ind, fit in zip(invalids, fitnesses):
             ind.fitness.values = fit
-            ind.responseTime = fit[0] # Add response time to individual for plotting        
+            ind.responseTime = fit[0] # Add response time to individual for plotting  
+        if plot: update_plot(pop, line_style='o',title="Population after Evaluation",block=True)      
         #=======================================================================
 
         all_populations["Generation %s" %(g)] = pop
         # Select the top 3 of current population for printing
         topThree = tools.selBest(pop, k=3)
         # Add the winner of this population to the plot
-        topOne.append(topThree[0])
-        
-        # Expand the plot with the new winner
-        if plot: update_plot(topOne, line_style='o',title="Sequential.\nGeneration: %s" %(g))
+        append = True
+        for item in topOne:
+            if topThree[0] == item and topThree[0].responseTime == item.responseTime:
+                append = False
+        if append: topOne.append(topThree[0])
         
         # Print the top 3 for this population
         print("Generation %d" % g)
@@ -278,7 +296,7 @@ if __name__ == "__main__":
     This Example is based on a calculator that can add '+' substract '-' multiply 'x' and divide '/'.
     Example: calculate(6, '+', 2) returns 8
     """
-    plot = True
+    plot = True if len(sys.argv) > 1 else False
 
     # Prepare the plot
     if plot:
@@ -291,7 +309,7 @@ if __name__ == "__main__":
     # Create the initial population and start the Evolutionary Algorithm
     #===========================================================================
     npop = 50
-    ngen = 100
+    ngen = 50
     cxpb = 0.5
     mutpb = 0.3
     pop = toolbox.population(n=npop)
@@ -307,8 +325,8 @@ if __name__ == "__main__":
     # Sort the best performing individuals by response time, and show in a new figure
     top = dict()
     top['Sorted'] = tools.selWorst(topOne, k=len(topOne))
-    create_plot(top,plot_name='plot.html')
     create_plot(pop,plot_name='populations.html')
+    create_plot(top,plot_name='plot.html')
     
 #     update_plot(topOne, figure=2, subplot=(1,1,1), line_style='o', title="Sorted.\nGenerations: %s, cross-over: %s, mutation: %s" %(ngen, cxpb, mutpb))
 #     plt.show(block=True)   
