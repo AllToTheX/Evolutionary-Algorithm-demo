@@ -3,13 +3,14 @@ A demo for applying an evolutionary algorithm in python using DEAP.
 
 This demo evaluates the response time of a simple calculator with some added delays to certain conditions to make sure the algorithm has something to look for.
 
-The evaluation and mutation are custom, the applying of the algorithm is copy pasted from DEAPs eaSimple() for demo purposes. The selection and mating is done by DEAPs build-in functions cxTwoPoint() and selTournament().
+The evaluation and mutation are custom, the applying of the algorithm is copy pasted from DEAPs eaSimple() for demo purposes. The selection and mating is done by DEAPs build-in functions cxTwoPoint() and selBest().
 
 To run you need matplotlib and plotly (for plotting the evolution) and DEAP for the evolution itself.
 
-<code>pip install deap</code>
+## Before you can run it
+This demo was written with python 3.5 and needs deap, matplotlib and plotly
 
-<code>pip install matplotlib plotly</code>
+<code>pip3 install -r requirements.txt</code>
 
 ### possible run issues
 ''' Unkown locale UTF-8 error

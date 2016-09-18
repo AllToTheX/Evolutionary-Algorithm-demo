@@ -12,9 +12,6 @@ import timeit
 import plotly as py
 import plotly.graph_objs as go
 
-# import AppKit
-# print [(screen.frame().size.width, screen.frame().size.height) for screen in AppKit.NSScreen.screens()]
-
 from deap import base, creator, tools
 
 VAR1 = range(1,99+1)
@@ -73,7 +70,7 @@ def mutChoiceFromList(individual, posval, indpb):
     """
     size = len(individual)
     
-    for i, xl in zip(xrange(size), posval):
+    for i, xl in zip(range(size), posval):
         if random.random() < indpb:
             individual[i] = random.choice(xl)
     
@@ -110,7 +107,7 @@ def update_plot(values, figure=1, subplot=(1,1,1), line_style='', title='', bloc
     
     plt.show(block=True) if block else plt.pause(0.05)
     
-def create_plot(populations,plot_name='plot.html'):
+def create_plot(populations,plot_name='plot.html',add_gen=False):
     """
     Create an HTML5 plot of the individuals response times
     """
@@ -134,16 +131,18 @@ def create_plot(populations,plot_name='plot.html'):
             )
         )
     )
-    for name, population in populations.iteritems():
+    for name, population in populations.items():
         # Get the response times and string representation of the individuals 
         x_values = [' '.join([str(item) for item in ind]) for ind in population] # string representation
         y_values = [item.responseTime*1000 for item in population] # Response times
+        generation = [ind.generation for ind in population if hasattr(ind,'generation')]
         # Create a trace
         trace = go.Scatter(
             x = x_values,
             y = y_values,
             mode = 'markers',
             name = name,
+            text = generation if add_gen else '',
             marker = {
                       'size'    : 10,
                       'line'    : {'width'  : 2},
@@ -181,7 +180,7 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         :returns: (pop, topOne) The resulting population and the best individuals of each generation
     """
     #===========================================================================
-    # determine the amount of individuals to use for Recombination
+    # determine the amount of individuals to use for the crossover
     #===========================================================================
     selfact = 0.2
     select_k = int( len(pop)*selfact ) # Amount of individuals to keep
@@ -255,7 +254,9 @@ def run(toolbox, pop, ngen, cxpb, mutpb, plot=True):
         for item in topOne:
             if topThree[0] == item and topThree[0].responseTime == item.responseTime:
                 append = False
-        if append: topOne.append(topThree[0])
+        if append: 
+            topThree[0].generation = "Generation %s" %(g)
+            topOne.append(topThree[0])
         
         # Print the top 3 for this population
         print("Generation %d" % g)
@@ -299,8 +300,7 @@ if __name__ == "__main__":
     plot = True if len(sys.argv) > 1 else False
 
     # Prepare the plot
-    if plot:
-        plt.ion()
+    if plot: plt.ion()
     
     # Create the evolutionary algorithm toolbox
     toolbox = setupToolbox()    
@@ -320,14 +320,11 @@ if __name__ == "__main__":
     # Print the top 10 of the resulting population     
     topTen = tools.selBest(topOne, k=10)
     for index, item in enumerate(topTen):
-        print("#%d: %E %s" %(index,item.responseTime, str(item)))
+        print("#%d: %E %s (%s)" %(index,item.responseTime, str(item), item.generation))
     
     # Sort the best performing individuals by response time, and show in a new figure
     top = dict()
     top['Sorted'] = tools.selWorst(topOne, k=len(topOne))
     create_plot(pop,plot_name='populations.html')
-    create_plot(top,plot_name='plot.html')
-    
-#     update_plot(topOne, figure=2, subplot=(1,1,1), line_style='o', title="Sorted.\nGenerations: %s, cross-over: %s, mutation: %s" %(ngen, cxpb, mutpb))
-#     plt.show(block=True)   
+    create_plot(top,plot_name='plot.html', add_gen=True) 
         
